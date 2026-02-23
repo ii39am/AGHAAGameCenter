@@ -1,10 +1,11 @@
-import { openDb } from '@/lib/db';
+import connectMongo from '@/lib/mongoose';
+import Comment from '@/models/Comment';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
     try {
-        const db = await openDb();
-        const comments = await db.all('SELECT * FROM comments ORDER BY createdAt DESC');
+        await connectMongo();
+        const comments = await Comment.find({}).sort({ createdAt: -1 });
         return NextResponse.json(comments);
     } catch (error) {
         console.error('Failed to fetch comments', error);
@@ -24,12 +25,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Name or message too long' }, { status: 400 });
         }
 
-        const db = await openDb();
-        const result = await db.run(
-            'INSERT INTO comments (name, message) VALUES (?, ?)',
-            [name, message]
-        );
-        const newComment = await db.get('SELECT * FROM comments WHERE id = ?', result.lastID);
+        await connectMongo();
+
+        const newComment = await Comment.create({
+            name,
+            message,
+        });
+
         return NextResponse.json(newComment, { status: 201 });
     } catch (error) {
         console.error('Failed to insert comment', error);
